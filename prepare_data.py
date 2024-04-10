@@ -23,11 +23,6 @@ def build_vocab(sentences, tokenizer):
     return vocab(counter, specials=['<unk>', '<pad>', '<bos>', '<eos>'])
 
 
-en_tokenizer = get_tokenizer('spacy', language='en_core_web_sm')
-te_tokenizer = get_tokenizer('basic_english')
-eng_sentences, telugu_sentences = load_data('english_telugu_data.txt')
-eng_vocab = build_vocab(eng_sentences, en_tokenizer)
-te_vocab = build_vocab(telugu_sentences, te_tokenizer)
 
 def tokenize(text, vocab, tokenizer):
     return [vocab['<bos>']] + [vocab[token] for token in tokenizer(text)] + [vocab['<eos>']]
@@ -51,20 +46,26 @@ class TranslationDataset(Dataset):
         trg_numericalized = tokenize(trg_sentence, self.trg_vocab, self.trg_tokenizer)
         return torch.tensor(src_numericalized), torch.tensor(trg_numericalized)
 
-# Create the dataset
-dataset = TranslationDataset(eng_sentences, telugu_sentences, eng_vocab, te_vocab, en_tokenizer, te_tokenizer)
 
 def collate_fn(batch):
     src_batch, trg_batch = [], []
     for src_item, trg_item in batch:
-        src_batch.append(torch.tensor(src_item))
-        trg_batch.append(torch.tensor(trg_item))
-    src_batch = pad_sequence(src_batch, padding_value=eng_vocab['<pad>'])
-    trg_batch = pad_sequence(trg_batch, padding_value=te_vocab['<pad>'])
+        src_batch.append(src_item.clone().detach())
+        trg_batch.append(trg_item.clone().detach())
+    src_batch = pad_sequence(src_batch, padding_value=eng_vocab['<pad>']).transpose(0,1)
+    trg_batch = pad_sequence(trg_batch, padding_value=te_vocab['<pad>']).transpose(0,1)
     return src_batch, trg_batch
 
-# Create the DataLoader
-BATCH_SIZE = 64
-dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
 
 
+en_tokenizer = get_tokenizer('spacy', language='en_core_web_sm')
+te_tokenizer = get_tokenizer('basic_english')
+eng_sentences, telugu_sentences = load_data('english_telugu_data.txt')
+eng_vocab = build_vocab(eng_sentences, en_tokenizer)
+te_vocab = build_vocab(telugu_sentences, te_tokenizer)
+
+if __name__ == '__main__':
+    dataset = TranslationDataset(eng_sentences, telugu_sentences, eng_vocab, te_vocab, en_tokenizer, te_tokenizer)
+
+    BATCH_SIZE = 64
+    dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
