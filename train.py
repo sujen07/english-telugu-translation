@@ -11,7 +11,8 @@ dataset = TranslationDataset(eng_sentences, telugu_sentences, eng_vocab, te_voca
 
 BATCH_SIZE = 128
 dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
-
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(f'Using device: {device}')
 
 # Initialize models and optimizers
 eng_size = len(eng_vocab)
