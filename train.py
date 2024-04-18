@@ -21,13 +21,13 @@ te_size = len(te_vocab)
 learning_rate = 0.001
 hidden_size = 128
 
-encoder = EncoderRNN(eng_size, hidden_size)
-decoder = AttnDecoderRNN(hidden_size, te_size, te_vocab)
+encoder = EncoderRNN(eng_size, hidden_size).to(device)
+decoder = AttnDecoderRNN(hidden_size, te_size, te_vocab).to(device)
 encoder_optim = torch.optim.Adam(encoder.parameters(), lr=learning_rate)
 decoder_optim = torch.optim.Adam(decoder.parameters(), lr=learning_rate)
 
 
-criterion = torch.nn.NLLLoss(ignore_index=eng_vocab['<pad>'])
+criterion = torch.nn.NLLLoss(ignore_index=eng_vocab['<pad>']).to(device)
 
 def eval_sent(sentence):
     inp = tokenize(sentence, eng_vocab)
@@ -36,7 +36,7 @@ def eval_sent(sentence):
     decoder.eval()
 
     with torch.no_grad():
-        enc_out,enc_hidden = encoder(tensor_inp)
+        enc_out,enc_hidden = encoder(tensor_inp.to(device))
         decoder_out, decoder_hidden,_ = decoder(enc_out, enc_hidden)
 
     max_indices = torch.argmax(decoder_out, dim=-1)
@@ -54,12 +54,12 @@ for src,trg in tqdm.tqdm(dataloader):
     encoder_optim.zero_grad()
     decoder_optim.zero_grad()
     max_length = trg.shape[-1]
-    output, hidden_state = encoder(src)
+    output, hidden_state = encoder(src.to(device))
     decoder_out, decoder_hidden,_ = decoder(output, hidden_state, trg, max_length=max_length)
 
     decode_out = decoder_out.reshape(-1, decoder_out.shape[-1]) # Reshape to [batch_size * seq_len, vocab_size]
     trg = trg.reshape(-1)  # Flatten to [batch_size * seq_len]
-    loss = criterion(decode_out, trg)
+    loss = criterion(decode_out, trg.to(device))
     loss.backward()
     encoder_optim.step()
     decoder_optim.step()
