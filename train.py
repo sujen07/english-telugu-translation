@@ -3,13 +3,13 @@ from prepare_data import *
 from torch.utils.data import DataLoader
 import torch
 import tqdm
-
+torch.backends.cudnn.enabled = False
 
 
 
 dataset = TranslationDataset(eng_sentences, telugu_sentences, eng_vocab, te_vocab)
 
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f'Using device: {device}')
@@ -50,16 +50,16 @@ def eval_sent(sentence):
 
 print(len(dataloader))
 for src,trg in tqdm.tqdm(dataloader):
-
+    src, trg = src.to(device), trg.to(device)
     encoder_optim.zero_grad()
     decoder_optim.zero_grad()
     max_length = trg.shape[-1]
-    output, hidden_state = encoder(src.to(device))
+    output, hidden_state = encoder(src)
     decoder_out, decoder_hidden,_ = decoder(output, hidden_state, trg, max_length=max_length)
 
     decode_out = decoder_out.reshape(-1, decoder_out.shape[-1]) # Reshape to [batch_size * seq_len, vocab_size]
     trg = trg.reshape(-1)  # Flatten to [batch_size * seq_len]
-    loss = criterion(decode_out, trg.to(device))
+    loss = criterion(decode_out, trg)
     loss.backward()
     encoder_optim.step()
     decoder_optim.step()
